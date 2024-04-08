@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"reflect"
 	"sort"
 	"time"
+
+	"golang.org/x/exp/constraints"
 )
 
-type A[T comparable, U comparable] struct {
+type A[T constraints.Ordered, U constraints.Ordered] struct {
 	first  T
 	second U
 	third  int64
@@ -20,36 +21,20 @@ type B struct {
 	third  int64
 }
 
-type Comparable[T any] interface {
-	Less(other T) bool
-}
-
-func test[T comparable](arr []T) time.Duration {
+func test_a[T constraints.Ordered, U constraints.Ordered](arr []A[T, U]) time.Duration {
 	start := time.Now()
 	sort.Slice(arr, func(i, j int) bool {
-		a := arr[i]
-		b := arr[j]
-
-		// Проверяем, реализует ли тип T интерфейс Comparable.
-		if isComparable(a) {
-			// Получаем метод Less и вызываем его для сравнения элементов.
-			lessMethod := reflect.ValueOf(a).MethodByName("Less")
-			args := []reflect.Value{reflect.ValueOf(b)}
-			result := lessMethod.Call(args)
-			return result[0].Bool()
+		if arr[i].first == arr[j].first {
+			if arr[i].second == arr[j].second {
+				return arr[i].third < arr[j].third
+			}
+			return arr[i].second < arr[j].second
 		}
-
-		// Если тип не реализует интерфейс Comparable, возвращаем false.
-		return false
+		return arr[i].first < arr[j].first
 	})
+
 	elapsed := time.Since(start)
 	return elapsed
-}
-
-// Функция isComparable проверяет, реализует ли тип T интерфейс Comparable.
-func isComparable[T comparable](a T) bool {
-	compType := reflect.TypeOf((*Comparable[T])(nil)).Elem()
-	return reflect.TypeOf(a).Implements(compType)
 }
 
 func generateRandomA() A[string, int] {
@@ -74,8 +59,15 @@ func generateRandomString() string {
 func test_b(arr []B) time.Duration {
 	start := time.Now()
 	sort.Slice(arr, func(i, j int) bool {
+		if arr[i].first == arr[j].first {
+			if arr[i].second == arr[j].second {
+				return arr[i].third < arr[j].third
+			}
+			return arr[i].second < arr[j].second
+		}
 		return arr[i].first < arr[j].first
 	})
+
 	elapsed := time.Since(start)
 	return elapsed
 }
@@ -94,7 +86,7 @@ func main() {
 			vecB[j] = B(randomA)
 		}
 
-		sortTimeForA := test(vecA)
+		sortTimeForA := test_a(vecA)
 		sortTimeForB := test_b(vecB)
 
 		totalSortTimeForA += sortTimeForA
